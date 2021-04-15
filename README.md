@@ -1,2 +1,2 @@
 # arm
-ARM templates
+ARM templates for references
