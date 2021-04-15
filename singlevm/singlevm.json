@@ -1,0 +1,137 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  // Building virtual machine where you have to define the values
+  // very basic with nothing on
+  "parameters": {
+    "VirtualMachineName": {
+      "type": "string"
+    },
+    "virtualMachineSize": { 
+      "type": "string"
+    },
+    "virtualNetworkName": { 
+      "type": "string"
+    },
+    "subnetName": { 
+      "type": "string"
+   },
+    "vNetResourceGroup": { 
+      "type": "string"
+    },
+    "localVMAdminUsername":{
+      "type": "string"
+    },
+    "localVmAdminPassword": {
+      "type": "securestring"
+    }   
+                },
+  "variables": {
+    "vnetId": "[concat(resourceId(parameters ('vNetResourceGroup'),'Microsoft.Network/virtualNetworks', parameters ('virtualNetworkName')))]",
+    "networkInterfaceName": "[concat(parameters('VirtualMachineName'), '-nic001')]",
+    "subnetRef": "[concat(variables('vnetId'), '/subnets/', parameters ('subnetName'))]",
+    "IPConfigVM001": "[concat(variables('networkInterfaceName'),'-config')]",
+    "osDiskName": "[concat(parameters('virtualMachineName'), '-osDisk')]",
+    "dataDiskName001": "[concat(parameters('virtualMachineName'), '-datadisk001')]"
+  },
+  "resources": [
+    {
+      "name": "[variables('networkInterfaceName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2016-09-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [],
+      "tags": {
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "[variables('IPConfigVM001')]",
+            "properties": {
+              "subnet": {
+                "id": "[variables('subnetRef')]"
+              },
+              "PrivateIpAllocationMethod": "Dynamic"
+              //"PrivateIpAddress": "[parameters('IpAddress001')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('VirtualMachineName')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2020-12-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', variables('networkInterfaceName'))]"
+      ],
+      "tags": {},
+
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('virtualMachineSize')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "MicrosoftWindowsServer",
+            "offer": "WindowsServer",
+            "sku": "2012-R2-Datacenter",
+            "version": "latest"
+          },
+          "osDisk": {
+            //"osType": "string",
+            "name": "[variables('osDiskName')]",
+            "caching": "ReadOnly",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "Standard_LRS"
+
+            }
+          },
+          "dataDisks": [
+            {
+              "lun": 0,
+              "name": "[variables('dataDiskName001')]",
+              "caching": "ReadOnly",
+              "createOption": "Empty",
+              "diskSizeGB": 32,
+              "managedDisk": {
+                "storageAccountType": "Standard_LRS"
+              }
+            }
+          ]
+        },
+
+        "osProfile": {
+          "computerName": "[parameters('VirtualMachineName')]",
+          "adminUsername": "[parameters('localVMAdminUsername')]",
+          "adminPassword": "[parameters('localVmAdminPassword')]",
+          "windowsConfiguration": {
+            "provisionVMAgent": "true",
+            "enableAutomaticUpdates": "false"
+          }
+
+          //"requireGuestProvisionSignal": "true"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+            }
+          ]
+        },
+        "securityProfile": {
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": "true"
+            //"storageUri": "string"
+          }
+        },
+        "licenseType": "Windows_Server"
+      }
+    }
+
+  ]
+}
